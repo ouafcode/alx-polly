@@ -17,12 +17,12 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/create">
-              <Button size="lg" className="text-lg px-8 py-3">
+              <Button size="lg" className="text-lg px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white">
                 Create Your First Poll
               </Button>
             </Link>
             <Link href="/polls">
-              <Button variant="outline" size="lg" className="text-lg px-8 py-3">
+              <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-blue-600 text-blue-600 hover:bg-blue-50">
                 Browse Polls
               </Button>
             </Link>
@@ -99,12 +99,12 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">
-              <Button size="lg" className="text-lg px-8 py-3">
+              <Button size="lg" className="text-lg px-8 py-3 bg-green-600 hover:bg-green-700 text-white">
                 Sign Up Free
               </Button>
             </Link>
             <Link href="/login">
-              <Button variant="outline" size="lg" className="text-lg px-8 py-3">
+              <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-gray-600 text-gray-600 hover:bg-gray-50">
                 Sign In
               </Button>
             </Link>
