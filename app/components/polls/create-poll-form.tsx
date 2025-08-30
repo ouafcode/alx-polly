@@ -11,6 +11,8 @@ interface PollOption {
 }
 
 export default function CreatePollForm() {
+  console.log("CreatePollForm component rendering") // Debug log
+  
   const [formData, setFormData] = useState({
     question: "",
     description: "",
@@ -21,6 +23,7 @@ export default function CreatePollForm() {
   })
 
   const addOption = () => {
+    console.log("Add option clicked") // Debug log
     const newId = (formData.options.length + 1).toString()
     setFormData(prev => ({
       ...prev,
@@ -29,6 +32,7 @@ export default function CreatePollForm() {
   }
 
   const removeOption = (id: string) => {
+    console.log("Remove option clicked for id:", id) // Debug log
     if (formData.options.length > 2) {
       setFormData(prev => ({
         ...prev,
@@ -48,8 +52,14 @@ export default function CreatePollForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("Form submitted:", formData) // Debug log
     // TODO: Implement poll creation logic
     console.log("Creating poll:", formData)
+  }
+
+  const testClick = () => {
+    console.log("Test button clicked!")
+    alert("Test button is working!")
   }
 
   return (
@@ -61,6 +71,11 @@ export default function CreatePollForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Test button to debug */}
+        <Button onClick={testClick} className="mb-4">
+          Test Button - Click Me!
+        </Button>
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <label htmlFor="question" className="text-sm font-medium">
