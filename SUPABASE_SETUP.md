@@ -21,17 +21,17 @@ Create a `.env.local` file in your project root with:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_project_url_here
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3001
 ```
 
 ## 4. Configure Authentication Settings
 
 1. In your Supabase dashboard, go to Authentication > Settings
-2. Configure your site URL (e.g., `http://localhost:3000` for development)
+2. Configure your site URL (e.g., `http://localhost:3001` for development)
 3. Add redirect URLs:
-   - `http://localhost:3000/auth/callback`
-   - `http://localhost:3000/login`
-   - `http://localhost:3000/register`
+   - `http://localhost:3001/auth/callback`
+   - `http://localhost:3001/login`
+   - `http://localhost:3001/register`
 
 ## 5. Enable Email Confirmation (Optional)
 
@@ -39,14 +39,29 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 2. Toggle "Enable email confirmations" if you want users to verify their email
 3. Customize email templates if desired
 
-## 6. Test the Setup
+## 6. Set Up Database Schema
+
+1. Go to your Supabase dashboard
+2. Navigate to SQL Editor
+3. Copy and paste the contents of `database-schema.sql` from your project
+4. Run the SQL to create the necessary tables and policies
+
+The schema includes:
+- `polls` table for storing poll questions and metadata
+- `poll_options` table for storing poll choices
+- `votes` table for tracking user votes
+- Row Level Security (RLS) policies for data protection
+- Triggers for automatic vote counting and timestamp updates
+
+## 7. Test the Setup
 
 1. Run `npm run dev`
 2. Try to register a new account
 3. Check the Supabase dashboard to see if the user was created
 4. Try logging in with the created account
+5. Test creating a poll from the `/create` page
 
-## 7. Database Schema (Optional)
+## 8. Database Schema Details
 
 If you want to store additional user data, you can create a `profiles` table:
 
@@ -69,31 +84,21 @@ CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 ```
 
-## 8. CORS and Network Issues
+## 9. Troubleshooting
 
-If you encounter CORS errors or "Cross origin request detected" warnings:
+### Common Issues:
+- **Authentication errors**: Make sure your environment variables are correct
+- **Database permission errors**: Check that RLS policies are properly configured
+- **CORS errors**: Verify your site URL and redirect URLs in Supabase settings
 
-### Solution 1: Use Localhost Only
-- Access your app only via `http://localhost:3000` instead of `http://192.168.56.1:3000`
+### Useful SQL Queries:
+```sql
+-- Check if tables exist
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
 
-### Solution 2: Update Development Script
-The package.json has been updated to handle network access:
-```bash
-npm run dev
+-- Check RLS policies
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual FROM pg_policies;
+
+-- View recent polls
+SELECT p.*, u.email FROM polls p JOIN auth.users u ON p.user_id = u.id ORDER BY p.created_at DESC;
 ```
-
-### Solution 3: Clear Browser Cache
-- Clear your browser cache and cookies
-- Try in an incognito/private window
-
-### Solution 4: Check Firewall/Antivirus
-- Ensure your firewall isn't blocking local network access
-- Temporarily disable antivirus to test
-
-## Troubleshooting
-
-- **"Invalid API key" error**: Double-check your environment variables
-- **"Email not confirmed" error**: Check if email confirmation is enabled in Supabase
-- **CORS errors**: Ensure your redirect URLs are properly configured
-- **"User not found" error**: Check if the user was created in the Supabase dashboard
-- **Cross origin warnings**: Use localhost instead of IP address, or clear browser cache

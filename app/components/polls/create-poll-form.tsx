@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
+import { createPoll } from "../../../lib/actions"
+import { useRouter } from "next/navigation"
 
 interface PollOption {
   id: string
@@ -11,7 +13,9 @@ interface PollOption {
 }
 
 export default function CreatePollForm() {
-  console.log("CreatePollForm component rendering") // Debug log
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     question: "",
@@ -23,7 +27,6 @@ export default function CreatePollForm() {
   })
 
   const addOption = () => {
-    console.log("Add option clicked") // Debug log
     const newId = (formData.options.length + 1).toString()
     setFormData(prev => ({
       ...prev,
@@ -32,7 +35,6 @@ export default function CreatePollForm() {
   }
 
   const removeOption = (id: string) => {
-    console.log("Remove option clicked for id:", id) // Debug log
     if (formData.options.length > 2) {
       setFormData(prev => ({
         ...prev,
@@ -50,16 +52,41 @@ export default function CreatePollForm() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Form submitted:", formData) // Debug log
-    // TODO: Implement poll creation logic
-    console.log("Creating poll:", formData)
-  }
+    setError(null)
+    setIsSubmitting(true)
 
-  const testClick = () => {
-    console.log("Test button clicked!")
-    alert("Test button is working!")
+    try {
+      // Validate form data
+      if (!formData.question.trim()) {
+        throw new Error("Poll question is required")
+      }
+
+      if (formData.options.some(option => !option.text.trim())) {
+        throw new Error("All poll options must have text")
+      }
+
+      // Prepare data for server action
+      const pollData = {
+        question: formData.question.trim(),
+        description: formData.description.trim() || undefined,
+        options: formData.options.map(option => ({ text: option.text.trim() }))
+      }
+
+      const result = await createPoll(pollData)
+
+      if (result.success) {
+        // Redirect to the polls page or show success message
+        router.push("/polls")
+      } else {
+        setError(result.error || "Failed to create poll")
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -71,10 +98,11 @@ export default function CreatePollForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Test button to debug */}
-        <Button onClick={testClick} className="mb-4">
-          Test Button - Click Me!
-        </Button>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -137,8 +165,12 @@ export default function CreatePollForm() {
             ))}
           </div>
 
-          <Button type="submit" className="w-full">
-            Create Poll
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating Poll..." : "Create Poll"}
           </Button>
         </form>
       </CardContent>

@@ -1,6 +1,9 @@
+import { getPolls } from "../../lib/actions"
 import PollsList from "../components/polls/polls-list"
 
-export default function PollsPage() {
+export default async function PollsPage() {
+  const polls = await getPolls()
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -9,7 +12,7 @@ export default function PollsPage() {
           Discover and vote on interesting polls from the community
         </p>
       </div>
-      <PollsList />
+      <PollsList initialPolls={polls} />
     </div>
   )
 }

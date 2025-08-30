@@ -1,44 +1,29 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import PollCard from "./poll-card"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
+import { Poll } from "../../../lib/actions"
 
-// Mock data for demonstration
-const mockPolls = [
-  {
-    id: "1",
-    question: "What's your favorite programming language?",
-    description: "Choose the language you enjoy working with the most",
-    options: [
-      { id: "1-1", text: "JavaScript/TypeScript", votes: 45 },
-      { id: "1-2", text: "Python", votes: 38 },
-      { id: "1-3", text: "Java", votes: 22 },
-      { id: "1-4", text: "C++", votes: 15 }
-    ],
-    totalVotes: 120
-  },
-  {
-    id: "2",
-    question: "Which framework do you prefer for web development?",
-    description: "Select your go-to framework for building web applications",
-    options: [
-      { id: "2-1", text: "React", votes: 52 },
-      { id: "2-2", text: "Vue.js", votes: 28 },
-      { id: "2-3", text: "Angular", votes: 20 },
-      { id: "2-4", text: "Svelte", votes: 12 }
-    ],
-    totalVotes: 112
-  }
-]
+interface PollsListProps {
+  initialPolls: Poll[]
+}
 
-export default function PollsList() {
-  const [polls, setPolls] = useState(mockPolls)
+export default function PollsList({ initialPolls }: PollsListProps) {
+  const [polls, setPolls] = useState<Poll[]>(initialPolls)
   const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState<"all" | "recent" | "popular">("all")
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleVote = (pollId: string, optionId: string) => {
+  // Update polls when initialPolls changes (e.g., after creating a new poll)
+  useEffect(() => {
+    setPolls(initialPolls)
+  }, [initialPolls])
+
+  const handleVote = async (pollId: string, optionId: string) => {
+    // TODO: Implement actual voting functionality with server action
+    // For now, just update the local state
     setPolls(prev => prev.map(poll => {
       if (poll.id === pollId) {
         return {
@@ -55,10 +40,36 @@ export default function PollsList() {
     }))
   }
 
-  const filteredPolls = polls.filter(poll =>
-    poll.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    poll.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const getFilteredPolls = () => {
+    let filtered = polls
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(poll =>
+        poll.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poll.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Apply category filter
+    switch (filter) {
+      case "recent":
+        filtered = filtered.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        break
+      case "popular":
+        filtered = filtered.sort((a, b) => b.totalVotes - a.totalVotes)
+        break
+      default:
+        // "all" - already sorted by creation date from server
+        break
+    }
+
+    return filtered
+  }
+
+  const filteredPolls = getFilteredPolls()
 
   return (
     <div className="space-y-6">
@@ -99,9 +110,22 @@ export default function PollsList() {
 
       {/* Polls List */}
       <div className="space-y-6">
-        {filteredPolls.length === 0 ? (
+        {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No polls found matching your search.</p>
+            <p className="text-muted-foreground">Loading polls...</p>
+          </div>
+        ) : filteredPolls.length === 0 ? (
+          <div className="text-center py-12">
+            {searchTerm ? (
+              <p className="text-muted-foreground">No polls found matching your search.</p>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-muted-foreground">No polls available yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  Be the first to create a poll!
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           filteredPolls.map(poll => (
