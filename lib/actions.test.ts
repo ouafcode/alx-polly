@@ -12,38 +12,48 @@ jest.mock("next/cache", () => ({
   revalidatePath: jest.fn(),
 }));
 
+// Stable, memoized table mocks so test-configured fns match runtime calls
+const pollsTable = (() => {
+  const selectEqOrder = { single: jest.fn(), order: jest.fn() };
+  const selectObj = {
+    eq: jest.fn(() => selectEqOrder),
+    order: jest.fn(() => selectEqOrder),
+  };
+  const insertSelect = { single: jest.fn() };
+  const deleteEq = { eq: jest.fn() };
+  const updateEq = { eq: jest.fn() };
+  return {
+    select: jest.fn(() => selectObj),
+    insert: jest.fn(() => ({ select: jest.fn(() => insertSelect) })),
+    delete: jest.fn(() => deleteEq),
+    update: jest.fn(() => updateEq),
+  };
+})();
+
+const pollOptionsTable = (() => {
+  const deleteEq = { eq: jest.fn() };
+  const updateEq = { eq: jest.fn() };
+  return {
+    select: jest.fn(() => ({ eq: jest.fn(), order: jest.fn() })),
+    insert: jest.fn(),
+    delete: jest.fn(() => deleteEq),
+    update: jest.fn(() => updateEq),
+  };
+})();
+
 const mockSupabase = {
   auth: {
     getSession: jest.fn(),
     getUser: jest.fn(),
   },
   from: jest.fn((tableName: string) => {
-    const mockEq = {
-      single: jest.fn(),
-      order: jest.fn(),
-    };
-    const mockSelect = {
-      eq: jest.fn(() => mockEq),
-      order: jest.fn(() => mockEq),
-    };
-    const mockInsertSelect = {
-      single: jest.fn(),
-    };
-    const mockInsert = {
-      select: jest.fn(() => mockInsertSelect),
-    };
-    const mockDelete = {
-      eq: jest.fn(),
-    };
-    const mockUpdate = {
-      eq: jest.fn(),
-    };
-
+    if (tableName === "polls") return pollsTable;
+    if (tableName === "poll_options") return pollOptionsTable;
     return {
-      select: jest.fn(() => mockSelect),
-      insert: jest.fn(() => mockInsert),
-      delete: jest.fn(() => mockDelete),
-      update: jest.fn(() => mockUpdate),
+      select: jest.fn(() => ({ eq: jest.fn(), order: jest.fn() })),
+      insert: jest.fn(() => ({})),
+      delete: jest.fn(() => ({ eq: jest.fn() })),
+      update: jest.fn(() => ({ eq: jest.fn() })),
     };
   }),
 };
