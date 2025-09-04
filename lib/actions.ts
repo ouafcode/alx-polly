@@ -390,3 +390,41 @@ export async function updatePoll(pollId: string, data: {
     }
   }
 }
+
+// Vote handling
+export async function submitVote(pollId: string, optionId: string): Promise<ActionResult> {
+  try {
+    const supabase = await getSupabase()
+    const auth = await getAuthenticatedUserId()
+    if (!auth.success) return auth
+
+    if (!pollId || !optionId) return { success: false, error: "Poll and option are required" }
+
+    type OptionRow = { id: string; poll_id: string }
+    const { data: optionRow, error: optionError } = await supabase
+      .from("poll_options")
+      .select("id, poll_id")
+      .eq("id", optionId)
+      .single<OptionRow>()
+
+    if (optionError || !optionRow) return { success: false, error: "Option not found" }
+    if (optionRow.poll_id !== pollId) return { success: false, error: "Option does not belong to poll" }
+
+    // Remove existing vote for this poll by the user (ignore result to preserve behavior)
+    await supabase.from("votes").delete().eq("poll_id", pollId).eq("user_id", auth.userId)
+
+    const nowIso = new Date().toISOString()
+    const { error: insertError } = await supabase
+      .from("votes")
+      .insert({ poll_id: pollId, option_id: optionId, user_id: auth.userId, created_at: nowIso })
+
+    if (insertError) return { success: false, error: "Failed to submit vote" }
+
+    revalidatePath("/polls")
+    revalidatePath("/dashboard")
+    return { success: true }
+  } catch (error) {
+    console.error("Error in submitVote:", error)
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error occurred" }
+  }
+}
