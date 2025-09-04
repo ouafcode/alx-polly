@@ -3,8 +3,8 @@ import { createBrowserClient } from '@supabase/ssr'
 // Client-side Supabase client (for use in components)
 export function createClient() {
   return createBrowserClient(
-    "https://ifflvmakttghpdkppfst.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZmx2bWFrdHRnaHBka3BwZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg1NjcsImV4cCI6MjA3MjA1NDU2N30.FeQUH_1lwPHeYvDZNEwzg351JjUJgXkd2eghoRpQVAo"
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
   )
 }
 
@@ -16,15 +16,12 @@ export async function createServerClient() {
   const cookieStore = await cookies()
 
   return createServerClient(
-    "https://ifflvmakttghpdkppfst.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZmx2bWFrdHRnaHBka3BwZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg1NjcsImV4cCI6MjA3MjA1NDU2N30.FeQUH_1lwPHeYvDZNEwzg351JjUJgXkd2eghoRpQVAo",
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    (process.env.SUPABASE_SECRET_KEY as string),
     {
       cookies: {
       get(name) {
         return cookieStore.get(name)?.value
-      },
-      getAll() {
-        return cookieStore.getAll()
       },
       set(name, value, options) {
         try {
@@ -34,18 +31,6 @@ export async function createServerClient() {
           // This can be ignored if you have middleware refreshing
           // user sessions.
           console.error('Error setting cookie in server component:', error)
-        }
-      },
-      setAll(cookiesToSet: Array<{ name: string; value: string; options?: { expires?: Date } }>): void {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        } catch (error) {
-          // The `setAll` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
-          console.error('Error setting cookies in server component:', error)
         }
       },
       remove(name, options) {
@@ -66,15 +51,12 @@ export async function createRouteHandlerClient() {
   const cookieStore = await cookies()
 
   return createServerClient(
-    "https://ifflvmakttghpdkppfst.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZmx2bWFrdHRnaHBka3BwZnN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg1NjcsImV4cCI6MjA3MjA1NDU2N30.FeQUH_1lwPHeYvDZNEwzg351JjUJgXkd2eghoRpQVAo",
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    (process.env.SUPABASE_SECRET_KEY as string),
     {
       cookies: {
         get(name) {
           return cookieStore.get(name)?.value
-        },
-        getAll() {
-          return cookieStore.getAll()
         },
         set(name, value, options) {
           try {
@@ -84,18 +66,6 @@ export async function createRouteHandlerClient() {
             // This can be ignored if you have middleware refreshing
             // user sessions.
             console.error('Error setting cookie in route handler:', error)
-          }
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options?: { expires?: Date } }>) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch (error) {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-            console.error('Error setting cookies in route handler:', error)
           }
         },
         remove(name, options) {

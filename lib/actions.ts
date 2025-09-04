@@ -3,6 +3,11 @@
 import { createServerClient } from "./supabase"
 import { revalidatePath } from "next/cache"
 
+// Shared result types
+type ActionError = { success: false; error: string }
+type ActionSuccess<T extends object = {}> = { success: true } & T
+export type ActionResult<T extends object = {}> = ActionSuccess<T> | ActionError
+
 export interface CreatePollData {
   question: string
   description?: string
@@ -23,23 +28,96 @@ export interface Poll {
   totalVotes: number
 }
 
+// Centralized client creation
+async function getSupabase() {
+  return createServerClient()
+}
+
+// Abstracted auth
+async function getAuthenticatedUserId(): Promise<ActionResult<{ userId: string }>> {
+  const supabase = await getSupabase()
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError || !session) {
+    return { success: false, error: "User not authenticated" }
+  }
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) {
+    return { success: false, error: "User not authenticated" }
+  }
+
+  return { success: true, userId: user.id }
+}
+
+// Validation
+function validateCreatePollInput(data: CreatePollData): string | null {
+  if (!data || typeof data.question !== "string" || data.question.trim().length === 0) {
+    return "Question is required"
+  }
+  if (!Array.isArray(data.options) || data.options.length < 2) {
+    return "At least two options are required"
+  }
+  const texts = data.options.map(o => (o.text || "").trim())
+  if (texts.some(t => t.length === 0)) {
+    return "Option text cannot be empty"
+  }
+  const unique = new Set(texts)
+  if (unique.size !== texts.length) {
+    return "Option texts must be unique"
+  }
+  return null
+}
+
+function validateUpdatePollInput(data: { question: string; description?: string; options: { id?: string; text: string }[] }): string | null {
+  if (!data || typeof data.question !== "string" || data.question.trim().length === 0) {
+    return "Question is required"
+  }
+  if (!Array.isArray(data.options) || data.options.length === 0) {
+    return "At least one option is required"
+  }
+  const texts = data.options.map(o => (o.text || "").trim())
+  if (texts.some(t => t.length === 0)) {
+    return "Option text cannot be empty"
+  }
+  return null
+}
+
+// Modularized DB helpers
+type PollRow = {
+  id: string
+  question: string
+  description?: string | null
+  user_id: string
+  created_at: string
+  poll_options?: { id: string; text: string; votes: number }[]
+}
+
+function mapPollRowToPoll(row: PollRow): Poll {
+  const options = row.poll_options || []
+  const totalVotes = options.reduce((sum, option) => sum + option.votes, 0)
+  return {
+    id: row.id,
+    question: row.question,
+    description: row.description ?? undefined,
+    user_id: row.user_id,
+    created_at: row.created_at,
+    options: options.map(o => ({ id: o.id, text: o.text, votes: o.votes })),
+    totalVotes,
+  }
+}
+
 export async function createPoll(data: CreatePollData) {
   try {
-    const supabase = await createServerClient()
-    
-    // Get the current user
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      console.error("Session error:", sessionError)
-      throw new Error("User not authenticated")
+    const supabase = await getSupabase()
+    const auth = await getAuthenticatedUserId()
+    if (!auth.success) {
+      return auth
     }
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      console.error("User error:", userError)
-      throw new Error("User not authenticated")
+    const userId = auth.userId
+
+    const validationError = validateCreatePollInput(data)
+    if (validationError) {
+      return { success: false, error: validationError }
     }
 
     // Create the poll
@@ -48,7 +126,7 @@ export async function createPoll(data: CreatePollData) {
       .insert({
         question: data.question,
         description: data.description || null,
-        user_id: user.id,
+        user_id: userId,
         created_at: new Date().toISOString()
       })
       .select()
@@ -90,7 +168,7 @@ export async function createPoll(data: CreatePollData) {
 
 export async function getPolls(): Promise<Poll[]> {
   try {
-    const supabase = await createServerClient()
+    const supabase = await getSupabase()
     
     // Fetch polls with their options
     const { data: polls, error: pollsError } = await supabase
@@ -115,24 +193,7 @@ export async function getPolls(): Promise<Poll[]> {
     }
 
     // Transform the data to match the expected format
-    const transformedPolls: Poll[] = polls.map(poll => {
-      const options = poll.poll_options || []
-      const totalVotes = options.reduce((sum, option) => sum + option.votes, 0)
-      
-      return {
-        id: poll.id,
-        question: poll.question,
-        description: poll.description,
-        user_id: poll.user_id,
-        created_at: poll.created_at,
-        options: options.map(option => ({
-          id: option.id,
-          text: option.text,
-          votes: option.votes
-        })),
-        totalVotes
-      }
-    })
+    const transformedPolls: Poll[] = polls.map((p: PollRow) => mapPollRowToPoll(p))
 
     return transformedPolls
   } catch (error) {
@@ -143,21 +204,9 @@ export async function getPolls(): Promise<Poll[]> {
 
 export async function getUserPolls(): Promise<Poll[]> {
   try {
-    const supabase = await createServerClient()
-    
-    // Get the current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      console.error("Session error in getUserPolls:", sessionError)
-      return []
-    }
-    
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      console.error("User error in getUserPolls:", userError)
+    const supabase = await getSupabase()
+    const auth = await getAuthenticatedUserId()
+    if (!auth.success) {
       return []
     }
 
@@ -176,7 +225,7 @@ export async function getUserPolls(): Promise<Poll[]> {
           votes
         )
       `)
-      .eq("user_id", user.id)
+      .eq("user_id", auth.userId)
       .order("created_at", { ascending: false })
 
     if (pollsError) {
@@ -185,24 +234,7 @@ export async function getUserPolls(): Promise<Poll[]> {
     }
 
     // Transform the data to match the expected format
-    const transformedPolls: Poll[] = polls.map(poll => {
-      const options = poll.poll_options || []
-      const totalVotes = options.reduce((sum, option) => sum + option.votes, 0)
-      
-      return {
-        id: poll.id,
-        question: poll.question,
-        description: poll.description,
-        user_id: poll.user_id,
-        created_at: poll.created_at,
-        options: options.map(option => ({
-          id: option.id,
-          text: option.text,
-          votes: option.votes
-        })),
-        totalVotes
-      }
-    })
+    const transformedPolls: Poll[] = polls.map((p: PollRow) => mapPollRowToPoll(p))
 
     return transformedPolls
   } catch (error) {
@@ -213,22 +245,10 @@ export async function getUserPolls(): Promise<Poll[]> {
 
 export async function deletePoll(pollId: string) {
   try {
-    const supabase = await createServerClient()
-    
-    // Get the current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      console.error("Session error in deletePoll:", sessionError)
-      throw new Error("User not authenticated")
-    }
-    
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      console.error("User error in deletePoll:", userError)
-      throw new Error("User not authenticated")
+    const supabase = await getSupabase()
+    const auth = await getAuthenticatedUserId()
+    if (!auth.success) {
+      throw new Error(auth.error)
     }
 
     // Verify the poll belongs to the current user
@@ -242,7 +262,7 @@ export async function deletePoll(pollId: string) {
       throw new Error("Poll not found")
     }
 
-    if (poll.user_id !== user.id) {
+    if (poll.user_id !== auth.userId) {
       throw new Error("Not authorized to delete this poll")
     }
 
@@ -286,22 +306,15 @@ export async function updatePoll(pollId: string, data: {
   options: { id?: string; text: string }[];
 }) {
   try {
-    const supabase = await createServerClient()
-    
-    // Get the current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      console.error("Session error in updatePoll:", sessionError)
-      throw new Error("User not authenticated")
+    const supabase = await getSupabase()
+    const auth = await getAuthenticatedUserId()
+    if (!auth.success) {
+      throw new Error(auth.error)
     }
-    
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      console.error("User error in updatePoll:", userError)
-      throw new Error("User not authenticated")
+
+    const validationError = validateUpdatePollInput(data)
+    if (validationError) {
+      throw new Error(validationError)
     }
 
     // Verify the poll belongs to the current user
@@ -315,7 +328,7 @@ export async function updatePoll(pollId: string, data: {
       throw new Error("Poll not found")
     }
 
-    if (poll.user_id !== user.id) {
+    if (poll.user_id !== auth.userId) {
       throw new Error("Not authorized to update this poll")
     }
 
