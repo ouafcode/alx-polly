@@ -5,12 +5,26 @@ import Link from "next/link"
 import { getUserPolls } from "../../lib/actions"
 import UserPollsList from "../components/polls/user-polls-list"
 
+/**
+ * Dashboard Page Component
+ * 
+ * The main dashboard page for authenticated users showing their poll statistics
+ * and management interface. Displays quick stats (total polls, total votes),
+ * quick action buttons, and a list of all polls created by the user.
+ * 
+ * This is a Server Component that fetches user polls data on the server
+ * and renders the dashboard with real-time statistics.
+ * 
+ * @returns JSX element containing the user dashboard
+ */
 export default async function DashboardPage() {
+  // Fetch user's polls from the server
   const userPolls = await getUserPolls()
 
   return (
     <ProtectedRoute>
       <div className="container mx-auto px-4 py-8">
+        {/* Page header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-lg text-gray-600 mt-2">
@@ -19,8 +33,9 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-8">
-          {/* Quick Stats */}
+          {/* Quick statistics cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Total polls created */}
             <Card>
               <CardHeader>
                 <CardTitle>Total Polls</CardTitle>
@@ -33,6 +48,7 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
+            {/* Total votes received */}
             <Card>
               <CardHeader>
                 <CardTitle>Total Votes</CardTitle>
@@ -47,6 +63,7 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
+            {/* Quick action buttons */}
             <Card>
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
@@ -65,7 +82,7 @@ export default async function DashboardPage() {
             </Card>
           </div>
 
-          {/* My Polls Section */}
+          {/* User's polls management section */}
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">My Polls</h2>
