@@ -493,7 +493,7 @@ export async function updatePoll(pollId: string, data: {
     // Verify the poll exists and belongs to the current user
     const { data: poll, error: pollError } = await supabase
       .from("polls")
-      .select("user_id, poll_options(id)")
+      .select("user_id") // Only need user_id for authorization
       .eq("id", pollId)
       .single()
 
@@ -518,21 +518,46 @@ export async function updatePoll(pollId: string, data: {
       throw new Error("Failed to update poll")
     }
 
-    // Handle poll options updates
-    const existingOptions = poll.poll_options || []
-    const existingOptionIds = existingOptions.map((opt: any) => opt.id)
-    
-    // Process each option: update existing or add new ones
+    // Fetch current options to determine what to delete, update, or insert
+    const { data: currentOptions, error: fetchOptionsError } = await supabase
+      .from("poll_options")
+      .select("id")
+      .eq("poll_id", pollId);
+
+    if (fetchOptionsError) {
+      throw new Error("Failed to fetch current poll options");
+    }
+
+    const currentOptionIds = new Set(currentOptions.map(opt => opt.id));
+    const incomingOptionIds = new Set(data.options.filter(opt => opt.id).map(opt => opt.id!));
+
+    // Identify options to delete
+    const optionsToDelete = Array.from(currentOptionIds).filter(
+      (id) => !incomingOptionIds.has(id)
+    );
+
+    if (optionsToDelete.length > 0) {
+      const { error: deleteOptionsError } = await supabase
+        .from("poll_options")
+        .delete()
+        .in("id", optionsToDelete);
+
+      if (deleteOptionsError) {
+        throw new Error("Failed to delete old poll options");
+      }
+    }
+
+    // Process incoming options: update existing or insert new
     for (const option of data.options) {
-      if (option.id && existingOptionIds.includes(option.id)) {
+      if (option.id && currentOptionIds.has(option.id)) {
         // Update existing option
         const { error } = await supabase
           .from("poll_options")
           .update({ text: option.text })
-          .eq("id", option.id)
+          .eq("id", option.id);
         
         if (error) {
-          throw new Error("Failed to update poll option")
+          throw new Error("Failed to update poll option");
         }
       } else {
         // Add new option
@@ -542,10 +567,10 @@ export async function updatePoll(pollId: string, data: {
             poll_id: pollId,
             text: option.text,
             votes: 0
-          })
+          });
         
         if (error) {
-          throw new Error("Failed to add poll option")
+          throw new Error("Failed to add poll option");
         }
       }
     }

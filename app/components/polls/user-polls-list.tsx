@@ -82,7 +82,7 @@ export default function UserPollsList({ initialPolls }: UserPollsListProps) {
           ) : (
             // No polls created yet
             <div className="space-y-4">
-              <p className="text-muted-foreground">You haven't created any polls yet.</p>
+              <p className="text-muted-foreground">You haven&apos;t created any polls yet.</p>
               <Link href="/create">
                 <Button>
                   <PlusCircle className="h-4 w-4 mr-2" /> Create Your First Poll
