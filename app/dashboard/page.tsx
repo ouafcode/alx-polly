@@ -1,3 +1,5 @@
+import { QuickActionsCard } from "../components/dashboard/quick-actions-card"
+import { QuickStatsCards } from "../components/dashboard/quick-stats-cards"
 import ProtectedRoute from "../components/auth/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -35,51 +37,8 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 gap-8">
           {/* Quick statistics cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Total polls created */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Polls</CardTitle>
-                <CardDescription>
-                  Your created polls
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{userPolls.length}</p>
-              </CardContent>
-            </Card>
-
-            {/* Total votes received */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Votes</CardTitle>
-                <CardDescription>
-                  Votes on your polls
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">
-                  {userPolls.reduce((sum, poll) => sum + poll.totalVotes, 0)}
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Quick action buttons */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>
-                  Get started with polls
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Link href="/create">
-                  <Button className="w-full">Create New Poll</Button>
-                </Link>
-                <Link href="/polls">
-                  <Button variant="outline" className="w-full">Browse Polls</Button>
-                </Link>
-              </CardContent>
-            </Card>
+            <QuickStatsCards userPolls={userPolls} />
+            <QuickActionsCard />
           </div>
 
           {/* User's polls management section */}
